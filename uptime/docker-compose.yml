@@ -1,0 +1,33 @@
+# Jeff Johnston
+# 12 Mar 2022
+#
+# docker-compose file for uptime kuma (https://github.com/louislam/uptime-kuma)
+# Configured with:
+#   Uses wildcard certificate from Traefik proxy (../traefik/)
+#   Secure uptime service (uptime.example.com)
+
+version: '3.6'
+
+services:
+  uptime:
+    container_name: uptime
+    image: louislam/uptime-kuma
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik
+    volumes:
+      - uptime_data:/app/data
+    labels:
+      - traefik.http.routers.uptime.rule=Host(`uptime.example.com`)
+      - traefik.http.routers.uptime.tls=true
+      - traefik.http.routers.uptime.entrypoints=websecure
+      - traefik.http.services.uptime.loadbalancer.server.port=3001
+
+volumes:
+   uptime_data:
+     driver: local
+
+networks:
+  traefik:
+    external: true

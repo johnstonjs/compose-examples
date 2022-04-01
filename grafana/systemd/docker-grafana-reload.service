@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Grafana image and update container
+
+[Service]
+Type=oneshot
+
+ExecStart=/bin/systemctl reload docker-grafana.service

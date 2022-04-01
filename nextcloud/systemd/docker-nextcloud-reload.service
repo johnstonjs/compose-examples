@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Nextcloud image and update container
+
+[Service]
+Type=oneshot
+
+ExecStart=/bin/systemctl reload docker-nextcloud.service

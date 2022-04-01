@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Portainer image and update container
+Requires=docker-portainer.service
+After=docker-portainer.service
+
+[Timer]
+OnCalendar=Mon *-*-* 02:30:00
+
+[Install]
+WantedBy=timers.target

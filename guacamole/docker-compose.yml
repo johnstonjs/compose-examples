@@ -1,0 +1,51 @@
+# Jeff Johnston
+# 12 Mar 2021
+#
+# docker-compose file for guacamole (guacamole.apache.org)
+# Configured with:
+#   Uses wildcard certificate from Traefik proxy (../traefik/)
+#   Secure guacamole service (guacamole.example.com)
+#   Relies upon LDAP for server configuration
+
+version: '3.6'
+
+services:
+  guacd:
+    container_name: 'guacd'
+    image: 'guacamole/guacd'
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - 'traefik'
+
+  guacamole:
+    container_name: 'guacamole'
+    image: 'guacamole/guacamole'
+    depends_on:
+      - guacd
+    environment:
+      - 'GUACD_HOSTNAME=guacd'
+      - 'LDAP_HOSTNAME=ldap.example.com'
+      - 'LDAP_PORT=636'
+      - 'LDAP_ENCRYPTION_METHOD=ssl'
+      - 'LDAP_USER_BASE_DN=ou=People,dc=example,dc=com'
+      - 'LDAP_GROUP_BASE_DN=ou=Groups,dc=example,dc=com'
+      - 'LDAP_SEARCH_BIND_DN=cn=guacamole,ou=Clients,dc=example,dc=com'
+      - 'LDAP_SEARCH_BIND_PASSWORD=INSERT_PASSWORD_HERE'
+      - 'LDAP_USERNAME_ATTRIBUTE=uid'
+      - 'LDAP_CONFIG_BASE_DN=ou=Guac,dc=example,dc=com'
+    links:
+      - guacd
+    labels:
+      - 'traefik.http.routers.guacamole.rule=Host(`guacamole.example.com`)'
+      - 'traefik.http.routers.guacamole.tls=true'
+      - 'traefik.http.routers.guacamole.entrypoints=websecure'
+      - 'traefik.http.middlewares.guacamole-add-prefix.addprefix.prefix=/guacamole'
+      - 'traefik.http.routers.guacamole.middlewares=guacamole-add-prefix@docker'
+      - 'traefik.http.services.guacamole.loadbalancer.server.port=8080'
+    networks:
+      - 'traefik'
+
+networks:
+  traefik:
+    external: true

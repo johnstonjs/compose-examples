@@ -1,0 +1,78 @@
+# Jeff Johnston
+# 12 Mar 2021
+#
+# docker-compose file for Nextcloud (nextcloud.com)
+# Configured with:
+#   Uses wildcard certificate from Traefik proxy (../traefik/)
+#
+#   Secure nextcloud service (nextcloud.example.com)
+
+# TODO: Integrate this: https://github.com/futurice/docker-volume-backup
+
+version: '3.6'
+
+services:
+
+  postgres:
+    container_name: 'postgres'
+    image: 'postgres:13.2'
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - 'traefik'
+    volumes:
+      - 'nextcloud-db:/var/lib/postgresql/data'
+    environment:
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=INSERT_POSTGRES_PASSWORD_HERE
+      - POSTGRES_DB=nextcloud
+
+  redis:
+    container_name: 'redis'
+    image: redis:6.2.1
+    networks:
+      - 'traefik'
+    volumes:
+      - redis:/data
+
+  nextcloud:
+    container_name: 'nextcloud'
+    image: nextcloud:latest
+    networks:
+      - 'traefik'
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=INSERT_POSTGRES_PASSWORD_HERE
+      - POSTGRES_HOST=postgres
+      - NEXTCLOUD_ADMIN_USER=admin
+      - NEXTCLOUD_ADMIN_PASSWORD=INSERT_NEXTCLOUD_PASSWORD_HERE
+      - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=nextcloud.example.com
+      - TRUSTED_PROXIES=172.19.0.0/16  #IP RANGE OF DOCKER NETWORK - TRAEFIK
+    volumes:
+      - nextcloud-www:/var/www/html
+    labels:
+      - traefik.http.routers.nextcloud.middlewares=nextcloud,nextcloud_redirect
+      - traefik.http.routers.nextcloud.rule=Host(`nextcloud.example.com`)
+      - traefik.http.routers.nextcloud.tls=true
+      - traefik.http.middlewares.nextcloud.headers.stsSeconds=155520011
+      - traefik.http.middlewares.nextcloud.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.nextcloud.headers.stsPreload=true
+      - traefik.http.middlewares.nextcloud_redirect.redirectregex.regex=/.well-known/(card|cal)dav
+      - traefik.http.middlewares.nextcloud_redirect.redirectregex.replacement=/remote.php/dav/
+
+volumes:
+  nextcloud-www:
+    driver: local
+  nextcloud-db:
+    driver: local
+  redis:
+    driver: local
+
+networks:
+  traefik:
+    external: true

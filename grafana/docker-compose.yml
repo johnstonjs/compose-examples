@@ -1,0 +1,92 @@
+# Jeff Johnston
+# 11 Mar 2022
+#
+# docker-compose file for Grafana (grafana.com) with InfluxDB for storing data
+# Configured with:
+#   Uses wildcard certificate from Traefik proxy (../traefik/)
+#   Secure Grafana service (grafana.example.com)
+#   Secure InfluxDB service (influxdb.example.com)
+#   UnPoller to grab statistics from UniFi devices and be scraped by InfluxDB
+
+
+version: '3.6'
+
+services:
+
+  influxdb:
+    container_name: influxdb
+    image: influxdb:latest
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik
+    links:
+      - unpoller:unpoller
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - ./config/influxdb:/etc/influxdb
+    labels:
+      - traefik.http.routers.influxdb.rule=Host(`influxdb.example.com`)
+      - traefik.http.routers.influxdb.tls=true
+      - traefik.http.routers.influxdb.entrypoints=websecure
+      - traefik.http.services.influxdb.loadbalancer.server.port=8086
+    environment:
+      - INFLUXD_NATS_MAX_PAYLOAD_BYTES=10485760
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=influx
+      - DOCKER_INFLUXDB_INIT_PASSWORD=clinking-scurvy-confusion-single-blabber
+      - DOCKER_INFLUXDB_INIT_ORG=TheShire
+      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf
+
+  unpoller:
+    image: golift/unifi-poller:latest
+    restart: unless-stopped
+    networks:
+      - traefik
+    container_name: unpoller
+    environment:
+      - UP_INFLUXDB_DISABLE=true
+      - UP_POLLER_DEBUG=false
+      - UP_UNIFI_DYNAMIC=false
+      - UP_PROMETHEUS_HTTP_LISTEN=0.0.0.0:9130
+      - UP_PROMETHEUS_NAMESPACE=unifipoller
+      - UP_UNIFI_CONTROLLER_0_PASS=INSERT_PASSWORD_HERE
+      - UP_UNIFI_CONTROLLER_0_SAVE_ALARMS=true
+      - UP_UNIFI_CONTROLLER_0_SAVE_ANOMALIES=true
+      - UP_UNIFI_CONTROLLER_0_SAVE_DPI=true
+      - UP_UNIFI_CONTROLLER_0_SAVE_EVENTS=true
+      - UP_UNIFI_CONTROLLER_0_SAVE_IDS=true
+      - UP_UNIFI_CONTROLLER_0_SAVE_SITES=true
+      - UP_UNIFI_CONTROLLER_0_URL=https://unifi.example.com
+      - UP_UNIFI_CONTROLLER_0_USER=unifipoller
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana:/etc/grafana
+    labels:
+      - traefik.http.routers.grafana.rule=Host(`grafana.example.com`)
+      - traefik.http.routers.grafana.tls=true
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+    environment:
+      - GF_SERVER_ROOT_URL=https://grafana.example.com
+      - GF_SERVER_DOMAIN=grafana.example.com
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,natel-discrete-panel,grafana-piechart-panel
+
+volumes:
+  influxdb_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  traefik:
+    external: true

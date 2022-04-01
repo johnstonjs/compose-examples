@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Portainer image and update container
+
+[Service]
+Type=oneshot
+
+ExecStart=/bin/systemctl reload docker-portainer.service

@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Uptime Kuma image and update container
+Requires=docker-uptime.service
+After=docker-uptime.service
+
+[Timer]
+OnCalendar=Mon *-*-* 03:15:00
+
+[Install]
+WantedBy=timers.target

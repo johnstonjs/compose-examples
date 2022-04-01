@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Traefik image and update container
+
+[Service]
+Type=oneshot
+
+ExecStart=/bin/systemctl reload docker-traefik.service

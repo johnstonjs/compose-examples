@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Grafana image and update container
+Requires=docker-grafana.service
+After=docker-grafana.service
+
+[Timer]
+OnCalendar=Mon *-*-* 02:45:00
+
+[Install]
+WantedBy=timers.target

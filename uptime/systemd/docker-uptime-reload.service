@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Uptime Kuma image and update container
+
+[Service]
+Type=oneshot
+
+ExecStart=/bin/systemctl reload docker-uptime.service

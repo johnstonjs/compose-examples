@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Traefik proxy image and update container
+Requires=docker-traefik.service
+After=docker-traefik.service
+
+[Timer]
+OnCalendar=Mon *-*-* 03:00:00
+
+[Install]
+WantedBy=timers.target

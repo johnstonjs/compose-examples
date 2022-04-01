@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Guacamole image and update container
+
+[Service]
+Type=oneshot
+
+ExecStart=/bin/systemctl reload docker-guacamole.service

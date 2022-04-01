@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Nextcloud image and update container
+Requires=docker-nextcloud.service
+After=docker-nextcloud.service
+
+[Timer]
+OnCalendar=Mon *-*-* 02:15:00
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,74 @@
+# Jeff Johnston
+# 10 Mar 2021
+#
+# docker-compose file for Traefik proxy (traefik.io)
+# Configured with:
+#   AWS Route53 DNS Challenge for LetsEncrypt
+#   LetsEncrypt Wildcard certificate (*.example.com)
+#   Secure Traefik proxy dashbard (traefik.example.com)
+#   Docker connectivity to easily host other services securely
+#   Docker network 'traefik' to share among all hosted services
+#     | create before first use: ~$ docker network create traefik
+# Derived from: https://www.reddit.com/r/Traefik/comments/e9ubk2/le_wildcard_certificates_on_traefik_v2/
+
+version: '3.6'
+
+services:
+  traefik:
+    container_name: 'traefik'
+    image: 'traefik:2.4'
+    #restart: 'always'
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - 'AWS_ACCESS_KEY_ID=INSERT_AWS_ACCESS_KEY_ID_HERE'
+      - 'AWS_SECRET_ACCESS_KEY=INSERT_AWS_SECRET_ACCESS_KEY_HERE'
+      - 'AWS_HOSTED_ZONE_ID=INSERT_AWS_ZONE_ID_HERE'
+      - 'AWS_REGION=INSERT_AWS_REGION_HERE'
+    command:
+      - '--log.level=INFO'
+      - '--entrypoints.web.address=:80'
+      - '--entrypoints.websecure.address=:443'
+      - '--providers.docker'
+      - '--providers.docker.network=traefik'
+      - '--api'
+      - '--certificatesresolvers.route53.acme.email=INSERT_EMAIL_ADDRESS_HERE'
+      - '--certificatesresolvers.route53.acme.dnschallenge=true'
+      - '--certificatesresolvers.route53.acme.dnschallenge.provider=route53'
+      - '--certificatesresolvers.route53.acme.storage=/letsencrypt/acme.json'
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - 'traefik'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - 'letsencrypt:/letsencrypt'
+    labels:
+      # global redirect to https
+      - 'traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)'
+      - 'traefik.http.routers.http-catchall.entrypoints=web'
+      - 'traefik.http.routers.http-catchall.middlewares=redirect-to-https'
+      - 'traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https'
+
+      # global wildcard certificates
+      - 'traefik.http.routers.wildcard-certs.tls.certresolver=route53'
+      - 'traefik.http.routers.wildcard-certs.tls.domains[0].main=example.com'
+      - 'traefik.http.routers.wildcard-certs.tls.domains[0].sans=*.example.com'
+
+      # dashboard
+      - 'traefik.http.routers.traefik.rule=Host(`traefik.example.com`)'
+      - 'traefik.http.routers.traefik.tls=true'
+      #- 'traefik.http.routers.traefik.tls.certresolve=route53'
+      - 'traefik.http.routers.traefik.entrypoints=websecure'
+      - 'traefik.http.routers.traefik.service=api@internal'
+      - 'traefik.http.routers.traefik.middlewares=authtraefik'
+      - 'traefik.http.middlewares.authtraefik.basicauth.users=admin:{SHA}INSERT_SHA_PASSWORD_HERE'
+
+networks:
+  traefik:
+    external: true
+
+volumes:
+  letsencrypt:
+    driver: local

@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Guacamole image and update container
+Requires=docker-guacamole.service
+After=docker-guacamole.service
+
+[Timer]
+OnCalendar=Mon *-*-* 02:00:00
+
+[Install]
+WantedBy=timers.target
